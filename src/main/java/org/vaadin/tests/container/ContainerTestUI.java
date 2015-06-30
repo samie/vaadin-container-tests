@@ -9,6 +9,7 @@ import com.vaadin.server.VaadinSession;
 import com.vaadin.ui.*;
 import com.vaadin.ui.Button.ClickEvent;
 import org.github.jamm.MemoryMeter;
+import org.vaadin.tests.container.backend.ContactService;
 
 import javax.servlet.annotation.WebServlet;
 import java.util.ArrayList;
@@ -17,39 +18,58 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-/**
- *
- */
 @Theme("valo")
-public class MyUI extends UI {
+public class ContainerTestUI extends UI {
 
-    private Label sizeLabel1 = new Label();
-    private Label sizeLabel2 = new Label();
+    static final String NOP_BTN_ID = "nop";
+    static final String CLEAR_BTN_ID = "clear";
+    static final String ADD_BTN_ID = "add";
+    static final String REMOVE_BTN_ID = "remove";
+    static final String CONTAINER_OPTIONS_ID = "container";
+
     private Table table = null;
+
+    ContactService service = ContactService.createDemoService();
 
     OptionGroup containerOptions;
 
     @Override
     protected void init(VaadinRequest request) {
-        TestData.initializeData();
 
         final VerticalLayout layout = new VerticalLayout();
         layout.setMargin(true);
+        layout.setSpacing(true);
         setContent(layout);
 
-        layout.addComponent(sizeLabel1);
-        layout.addComponent(sizeLabel2);
+        final VerticalLayout labels = new VerticalLayout();
+        layout.addComponents(labels);
+
 
         Button nop = new Button("Do nothing");
+        nop.setId(NOP_BTN_ID);
         nop.addClickListener(new Button.ClickListener() {
             public void buttonClick(ClickEvent event) {
                 // just trigger a server call
+                MemoryMeter meter = createMeter();
+
+                long uiSize = meter.measureDeep(ContainerTestUI.this);
+                Notification.show("" + uiSize);
             }
         });
         layout.addComponent(nop);
 
-        Button button = new Button("Add table and measure");
-        button.addClickListener(new Button.ClickListener() {
+        Button clear = new Button("Clear");
+        clear.setId(CLEAR_BTN_ID);
+        clear.addClickListener(new Button.ClickListener() {
+            public void buttonClick(ClickEvent event) {
+                labels.removeAllComponents();
+            }
+        });
+        layout.addComponent(clear);
+
+        Button btnAdd = new Button("Add table and measure");
+        btnAdd.setId(ADD_BTN_ID);
+        btnAdd.addClickListener(new Button.ClickListener() {
             public void buttonClick(ClickEvent event) {
                 if (table != null) return;
 
@@ -62,42 +82,47 @@ public class MyUI extends UI {
 
                 long detachedTableSize = meter.measureDeep(table);
 
-                long deepSizeBefore = meter.measureDeep(MyUI.this);
+                long deepSizeBefore = meter.measureDeep(ContainerTestUI.this);
 
                 layout.addComponent(table);
 
-                long deepSizeAfter = meter.measureDeep(MyUI.this);
+                long deepSizeAfter = meter.measureDeep(ContainerTestUI.this);
 
-                updateSizeLabel(sizeLabel1, "Add table ("+table.getContainerDataSource().getClass().getSimpleName()+")", deepSizeBefore, deepSizeAfter, detachedTableSize);
+                String str = formatSizeString("Add table (" + table.getContainerDataSource().getClass().getSimpleName() + ")", deepSizeBefore, deepSizeAfter, detachedTableSize);
+                labels.addComponents(new Label(str));
+
             }
         });
-        layout.addComponent(button);
+        layout.addComponent(btnAdd);
 
-        Button button2 = new Button("Remove table and measure");
-        button2.addClickListener(new Button.ClickListener() {
+        Button btnRemove = new Button("Remove table and measure");
+        btnRemove.setId(REMOVE_BTN_ID);
+        btnRemove.addClickListener(new Button.ClickListener() {
             public void buttonClick(ClickEvent event) {
                 if (table == null) return;
 
                 MemoryMeter meter = createMeter();
 
-                long deepSizeBefore = meter.measureDeep(MyUI.this);
+                long deepSizeBefore = meter.measureDeep(ContainerTestUI.this);
 
                 layout.removeComponent(table);
 
-                long deepSizeAfter = meter.measureDeep(MyUI.this);
+                long deepSizeAfter = meter.measureDeep(ContainerTestUI.this);
 
                 long detachedTableSize = meter.measureDeep(table);
 
-                updateSizeLabel(sizeLabel2, "Remove table ("+table.getContainerDataSource().getClass().getSimpleName()+")", deepSizeBefore, deepSizeAfter, detachedTableSize);
+                String str = formatSizeString("Remove table (" + table.getContainerDataSource().getClass().getSimpleName() + ")", deepSizeBefore, deepSizeAfter, detachedTableSize);
+                labels.addComponents(new Label(str));
 
                 table = null;
             }
 
         });
-        layout.addComponent(button2);
+        layout.addComponent(btnRemove);
 
-        containerOptions = new OptionGroup("Container", new ArrayList<String>(TestData.getContainerMap().keySet()));
-        containerOptions.setValue(TestData.getContainerMap().keySet().iterator().next());
+        containerOptions = new OptionGroup("Container", new ArrayList<String>(AvailableContainers.getContainerMap(service).keySet()));
+        containerOptions.setId(CONTAINER_OPTIONS_ID);
+        containerOptions.setValue(AvailableContainers.getContainerMap(service).keySet().iterator().next());
         layout.addComponent(containerOptions);
 
     }
@@ -116,18 +141,17 @@ public class MyUI extends UI {
     }
 
     protected Container createDataSource() {
-        return TestData.getContainerMap().get(containerOptions.getValue());
+        return AvailableContainers.getContainerMap(service).get(containerOptions.getValue());
     }
 
-    private void updateSizeLabel(Label sizeLabel, String prefix, long before, long after, long detachedSize) {
+    private String formatSizeString(String prefix, long before, long after, long detachedSize) {
         String sizes = prefix + " (Initial size / diff / detached size): ";
         sizes = sizes + before + " / " + (after - before) + " / " + detachedSize;
-        System.out.println(sizes);
-        sizeLabel.setValue(sizes);
+        return sizes;
     }
 
     @WebServlet(urlPatterns = "/*", name = "MyUIServlet", asyncSupported = true)
-    @VaadinServletConfiguration(ui = MyUI.class, productionMode = false)
+    @VaadinServletConfiguration(ui = ContainerTestUI.class, productionMode = false)
     public static class MyUIServlet extends VaadinServlet {
     }
 }

@@ -12,8 +12,8 @@
 		<vaadin.version>7.4.8</vaadin.version>
 		<vaadin.plugin.version>${vaadin.version}</vaadin.plugin.version>
 		<jetty.plugin.version>9.2.3.v20140905</jetty.plugin.version>
-		<project.source.version>1.7</project.source.version>
-		<project.target.version>1.7</project.target.version>
+		<project.source.version>1.8</project.source.version>
+		<project.target.version>1.8</project.target.version>
 		<project.encoding>UTF-8</project.encoding>
 	</properties>
 
@@ -56,6 +56,12 @@
 		<dependency>
 			<groupId>com.vaadin</groupId>
 			<artifactId>vaadin-server</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>com.vaadin.external.google</groupId>
+					<artifactId>guava</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.vaadin</groupId>
@@ -86,29 +92,94 @@
 			<artifactId>jamm</artifactId>
 			<version>0.3.1</version>
 		</dependency>
-
-		<!--
-		  Needed when using the widgetset optimizer (custom ConnectorBundleLoaderFactory).
-		  
-		  For widgetset compilation, vaadin-client-compiler is automatically added on the
-		  compilation classpath by vaadin-maven-plugin so normally there is no need for an
-		  explicit dependency.
-		-->
-		<!--
 		<dependency>
-			<groupId>com.vaadin</groupId>
-			<artifactId>vaadin-client-compiler</artifactId>
-			<scope>provided</scope>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-servlet</artifactId>
+			<version>8.1.1.v20120215</version>
+			<scope>test</scope>
 		</dependency>
-		-->
+
 		<dependency>
 			<groupId>com.vaadin</groupId>
 			<artifactId>vaadin-themes</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.hamcrest</groupId>
+			<artifactId>hamcrest-junit</artifactId>
+			<version>2.0.0.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testinfected.hamcrest-matchers</groupId>
+			<artifactId>all-matchers</artifactId>
+			<version>1.8</version>
+			<!-- version mismatch fix -->
+			<exclusions>
+				<exclusion>
+					<groupId>com.google.collections</groupId>
+					<artifactId>google-collections</artifactId>
+				</exclusion>
+			</exclusions>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.vaadin</groupId>
+			<artifactId>vaadin-testbench-core</artifactId>
+			<version>4.0.3</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.vaadin</groupId>
+			<artifactId>vaadin-testbench-api</artifactId>
+			<version>7.3.8</version>
+			<scope>test</scope>
+		</dependency>
+
 	</dependencies>
 
 	<build>
 		<plugins>
+			<!-- copies java agent dependency into the target directory -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>2.8</version>
+				<executions>
+					<execution>
+						<id>copy-dependencies</id>
+						<phase>generate-test-resources</phase>
+						<goals>
+							<goal>copy</goal>
+						</goals>
+						<configuration>
+							<artifactItems>
+								<artifactItem>
+									<groupId>com.github.jbellis</groupId>
+									<artifactId>jamm</artifactId>
+									<version>0.3.1</version>
+									<type>jar</type>
+									<outputDirectory>${project.build.directory}</outputDirectory>
+									<destFileName>jamm.jar</destFileName>
+								</artifactItem>
+							</artifactItems>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- executes test with java agent options of the JVM -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>-javaagent:${project.build.directory}/jamm.jar</argLine>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -161,15 +232,14 @@
 				</configuration>
 			</plugin>
 
+
+
 			<!-- The Jetty plugin allows us to easily test the development build by
 				running jetty:run on the command line. -->
 			<plugin>
 				<groupId>org.eclipse.jetty</groupId>
 				<artifactId>jetty-maven-plugin</artifactId>
 				<version>${jetty.plugin.version}</version>
-				<configuration>
-				    <scanIntervalSeconds>2</scanIntervalSeconds>
-				</configuration>
 			</plugin>
 		</plugins>
 
