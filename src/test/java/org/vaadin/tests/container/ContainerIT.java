@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * WebDriver tests against the demo/example app.
  */
-public class ContainerTest extends TestBenchTestCase {
+public class ContainerIT extends TestBenchTestCase {
 
     // TODO: This value should be tested with different machines
     private static final long UI_THRESHOLD_VALUE = 2048;
@@ -35,11 +35,6 @@ public class ContainerTest extends TestBenchTestCase {
 
     @BeforeClass
     public static void beforeAllTests() {
-        // Start the server
-        UITestServer.runUIServer(ContainerTestUI.class);
-
-        //TODO:
-        System.setProperty("phantomjs.binary.path", "/Users/se/tools/phantomjs-2.0.0-macosx/bin/phantomjs");
 
         // Create a single webdriver
         commonDriver = TestBench.createDriver(new PhantomJSDriver());
@@ -93,9 +88,6 @@ public class ContainerTest extends TestBenchTestCase {
         if (commonDriver != null) {
             commonDriver.quit();
         }
-
-        // Stop the server
-        UITestServer.shutdown();
     }
 
     @Before
@@ -183,21 +175,10 @@ public class ContainerTest extends TestBenchTestCase {
      * Reloads the page. Depending on UI configuration this might re-init the UI
      * or keep the state.
      *
-     * @see #restartApplication()
      */
     protected void reloadPage() {
-        getDriver().get(UITestServer.getServerUrl());
+        getDriver().get("http://localhost:8888/");
     }
-
-    /**
-     * Restarts the Vaadin application using ?restartApplication parameter.
-     *
-     * @see #reloadPage()
-     */
-    protected void restartApplication() {
-        getDriver().get(UITestServer.getServerUrl() + "?restartApplication");
-    }
-
 
     public static void printSize(String name, Object object, boolean printHeader) {
         if (printHeader) {
